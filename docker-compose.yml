@@ -1,0 +1,30 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: t3awniya_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: cooperative_db
+      MYSQL_USER: coop
+      MYSQL_PASSWORD: coop_2024
+      MYSQL_ROOT_PASSWORD: root_2024
+    ports:
+      - "3307:3306"
+    volumes:
+      - t3awniya_mysql_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: t3awniya_phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+
+volumes:
+  t3awniya_mysql_data:

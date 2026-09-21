@@ -1,0 +1,31 @@
+{
+  "name": "t3awniya-backend",
+  "version": "2.0.0",
+  "description": "نظام التعاونية - Express + Prisma API",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "migrate": "prisma migrate dev",
+    "seed": "node prisma/seed.js",
+    "test": "jest --runInBand"
+  },
+  "prisma": {
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.9",
+    "prisma": "^5.22.0",
+    "supertest": "^7.0.0"
+  }
+}

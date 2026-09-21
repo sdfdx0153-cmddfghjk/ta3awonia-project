@@ -1,0 +1,408 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// 👤 المستخدمين (Users) — كل مستخدم = تعاونية مستقلة + أعضاء مجلس الإدارة
+model User {
+  id              Int       @id @default(autoincrement())
+  username        String    @unique @db.VarChar(80)
+  email           String    @unique @db.VarChar(120)
+  password        String    @db.VarChar(255)
+  fullName        String?   @map("full_name") @db.VarChar(100)
+  role            String    @default("user") @db.VarChar(20)
+  isActive        Boolean   @default(true) @map("is_active")
+  phone           String?   @db.VarChar(20)
+  boardPosition   String?   @map("board_position") @db.VarChar(50)
+  appointmentDate DateTime? @map("appointment_date") @db.Date
+  termEndDate     DateTime? @map("term_end_date") @db.Date
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+
+  members             Member[]
+  products            Product[]
+  sales               Sale[]
+  contributions       Contribution[]
+  debts               Debt[]
+  expenses            Expense[]
+  suppliers           Supplier[]
+  purchaseOrders      PurchaseOrder[]
+  profitDistributions ProfitDistribution[]
+  inventoryChecks     InventoryCheck[]
+  boardMembers        BoardMember[]
+  assemblies          Assembly[]
+  minutes             Minute[]
+  decisions           Decision[]
+  committees          Committee[]
+  attendances         Attendance[]
+
+  @@map("users")
+}
+
+// 👥 الأعضاء (Members)
+model Member {
+  id            Int       @id @default(autoincrement())
+  userId        Int       @map("user_id")
+  fullName      String    @map("full_name") @db.VarChar(100)
+  firstName     String?   @map("first_name") @db.VarChar(50)
+  familyName    String?   @map("family_name") @db.VarChar(50)
+  cin           String    @db.VarChar(20)
+  phone         String?   @db.VarChar(20)
+  address       String?   @db.Text
+  birthDate     DateTime? @map("birth_date") @db.Date
+  joinDate      DateTime  @default(now()) @map("join_date") @db.Timestamp(3)
+  shareAmount   Decimal   @default(0) @map("share_amount") @db.Decimal(10, 2)
+  sharesCount   Int       @default(0) @map("shares_count")
+  paymentMethod String?   @map("payment_method") @db.VarChar(30)
+  notes         String?   @db.Text
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sales         Sale[]
+  debts         Debt[]
+  contributions Contribution[]
+  profits       MemberProfit[]
+  boardMembers  BoardMember[]
+
+  @@unique([userId, cin])
+  @@index([userId])
+  @@map("members")
+}
+
+// 🏛️ أعضاء مجلس الإدارة (Board Members) — مرتبطين بالأعضاء
+model BoardMember {
+  id              Int       @id @default(autoincrement())
+  userId          Int       @map("user_id")
+  memberId        Int       @map("member_id")
+  position        String    @db.VarChar(50)
+  appointmentDate DateTime  @map("appointment_date") @db.Date
+  termYears       Int       @default(3) @map("term_years")
+  termEndDate     DateTime? @map("term_end_date") @db.Date
+  isActive        Boolean   @default(true) @map("is_active")
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(3)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, memberId])
+  @@index([userId])
+  @@map("board_members")
+}
+
+// 📅 الجموعات العامة والاجتماعات
+model Assembly {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  type        String   @default("ordinary") @db.VarChar(30)
+  date        DateTime @db.Date
+  place       String?  @db.VarChar(200)
+  attendees   Int      @default(0)
+  agenda      String?  @db.Text
+  decisions   String?  @db.Text
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("assemblies")
+}
+
+// 📝 محاضر الاجتماعات
+model Minute {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  title     String   @db.VarChar(200)
+  date      DateTime @db.Date
+  secretary String?  @db.VarChar(100)
+  summary   String?  @db.Text
+  decisions String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("minutes")
+}
+
+// 🔑 سجل القرارات
+model Decision {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  number    String?  @db.VarChar(50)
+  title     String   @db.VarChar(200)
+  date      DateTime @db.Date
+  status    String   @default("approved") @db.VarChar(30)
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("decisions")
+}
+
+// 🏛️ اللجان
+model Committee {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  name      String   @db.VarChar(150)
+  president String?  @db.VarChar(100)
+  members   String?  @db.Text
+  mission   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("committees")
+}
+
+// ✅ سجل الحضور
+model Attendance {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  event     String   @db.VarChar(200)
+  date      DateTime @db.Date
+  present   String?  @db.Text
+  absent    String?  @db.Text
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("attendances")
+}
+
+
+
+// 📦 المنتجات (Products)
+model Product {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  name          String   @db.VarChar(100)
+  description   String?  @db.Text
+  category      String?  @db.VarChar(50)
+  unit          String   @default("قطعة") @db.VarChar(20)
+  buyPrice      Decimal  @map("buy_price") @db.Decimal(10, 2)
+  sellPrice     Decimal  @map("sell_price") @db.Decimal(10, 2)
+  stockQuantity Decimal  @default(0) @map("stock_quantity") @db.Decimal(10, 2)
+  minStock      Decimal  @default(5) @map("min_stock") @db.Decimal(10, 2)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  saleItems      SaleItem[]
+  orderItems     PurchaseOrderItem[]
+  inventoryItems InventoryCheckItem[]
+
+  @@index([userId])
+  @@map("products")
+}
+
+// 🛒 المبيعات (Sales)
+model Sale {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  memberId      Int      @map("member_id")
+  saleDate      DateTime @default(now()) @map("sale_date") @db.Timestamp(3)
+  totalAmount   Decimal  @default(0) @map("total_amount") @db.Decimal(10, 2)
+  discount      Decimal  @default(0) @db.Decimal(10, 2)
+  paymentMethod String   @default("cash") @map("payment_method") @db.VarChar(10)
+  isPaid        Boolean  @default(true) @map("is_paid")
+  notes         String?  @db.Text
+
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  member Member     @relation(fields: [memberId], references: [id])
+  items  SaleItem[]
+  debts  Debt[]
+
+  @@index([userId])
+  @@map("sales")
+}
+
+model SaleItem {
+  id         Int      @id @default(autoincrement())
+  saleId     Int      @map("sale_id")
+  productId  Int      @map("product_id")
+  quantity   Decimal  @db.Decimal(10, 2)
+  unitPrice  Decimal  @map("unit_price") @db.Decimal(10, 2)
+  buyPrice   Decimal  @map("buy_price") @db.Decimal(10, 2)
+  totalPrice Decimal  @map("total_price") @db.Decimal(10, 2)
+
+  sale    Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@map("sale_items")
+}
+
+// 💰 المساهمات (Contributions)
+model Contribution {
+  id               Int      @id @default(autoincrement())
+  userId           Int      @map("user_id")
+  memberId         Int      @map("member_id")
+  amount           Decimal  @db.Decimal(10, 2)
+  contributionDate DateTime @default(now()) @map("contribution_date") @db.Timestamp(3)
+  type             String   @default("monthly") @db.VarChar(20)
+  notes            String?  @db.Text
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id])
+
+  @@index([userId])
+  @@map("contributions")
+}
+
+// 📝 الديون (Debts)
+model Debt {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  memberId   Int      @map("member_id")
+  saleId     Int?     @map("sale_id")
+  totalDebt  Decimal  @map("total_debt") @db.Decimal(10, 2)
+  paidAmount Decimal  @default(0) @map("paid_amount") @db.Decimal(10, 2)
+  remaining  Decimal  @map("remaining") @db.Decimal(10, 2)
+  dueDate    DateTime? @map("due_date") @db.Date
+  isSettled  Boolean  @default(false) @map("is_settled")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  member Member @relation(fields: [memberId], references: [id])
+  sale   Sale?  @relation(fields: [saleId], references: [id])
+
+  @@index([userId])
+  @@map("debts")
+}
+
+// 💸 المصاريف (Expenses)
+model Expense {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  description String   @db.VarChar(255)
+  amount      Decimal  @db.Decimal(10, 2)
+  category    String?  @db.VarChar(50)
+  expenseDate DateTime @default(now()) @map("expense_date") @db.Timestamp(3)
+  notes       String?  @db.Text
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("expenses")
+}
+
+// 🏭 الموردين (Suppliers)
+model Supplier {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  name      String   @db.VarChar(100)
+  phone     String?  @db.VarChar(20)
+  address   String?  @db.Text
+  category  String?  @db.VarChar(50)
+  email     String?  @db.VarChar(100)
+  notes     String?  @db.Text
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders PurchaseOrder[]
+
+  @@index([userId])
+  @@map("suppliers")
+}
+
+// 📋 أوامر الشراء (Purchase Orders)
+model PurchaseOrder {
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  supplierId   Int       @map("supplier_id")
+  orderDate    DateTime  @default(now()) @map("order_date") @db.Timestamp(3)
+  totalAmount  Decimal   @default(0) @map("total_amount") @db.Decimal(10, 2)
+  status       String    @default("pending") @db.VarChar(20)
+  notes        String?   @db.Text
+  receivedDate DateTime? @map("received_date") @db.Date
+
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  supplier Supplier             @relation(fields: [supplierId], references: [id])
+  items    PurchaseOrderItem[]
+
+  @@index([userId])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id         Int      @id @default(autoincrement())
+  orderId    Int      @map("order_id")
+  productId  Int      @map("product_id")
+  quantity   Decimal  @db.Decimal(10, 2)
+  unitPrice  Decimal  @map("unit_price") @db.Decimal(10, 2)
+  totalPrice Decimal  @map("total_price") @db.Decimal(10, 2)
+
+  order   PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id])
+
+  @@map("purchase_order_items")
+}
+
+// 💹 توزيع الأرباح (Profit Distributions)
+model ProfitDistribution {
+  id               Int      @id @default(autoincrement())
+  userId           Int      @map("user_id")
+  distributionDate DateTime @default(now()) @map("distribution_date") @db.Timestamp(3)
+  totalProfit      Decimal  @map("total_profit") @db.Decimal(10, 2)
+  totalMembers     Int      @default(0) @map("total_members")
+  notes            String?  @db.Text
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+  user   User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shares MemberProfit[]
+
+  @@index([userId])
+  @@map("profit_distributions")
+}
+
+model MemberProfit {
+  id             Int      @id @default(autoincrement())
+  distributionId Int      @map("distribution_id")
+  memberId       Int      @map("member_id")
+  sharePercent   Decimal  @default(0) @map("share_percent") @db.Decimal(5, 2)
+  profitAmount   Decimal  @default(0) @map("profit_amount") @db.Decimal(10, 2)
+
+  distribution ProfitDistribution @relation(fields: [distributionId], references: [id], onDelete: Cascade)
+  member       Member             @relation(fields: [memberId], references: [id])
+
+  @@map("member_profits")
+}
+
+// 📦 الجرد (Inventory Checks)
+model InventoryCheck {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  checkDate DateTime @default(now()) @map("check_date") @db.Timestamp(3)
+  notes     String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(3)
+
+  user  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items InventoryCheckItem[]
+
+  @@index([userId])
+  @@map("inventory_checks")
+}
+
+model InventoryCheckItem {
+  id               Int      @id @default(autoincrement())
+  checkId          Int      @map("check_id")
+  productId        Int      @map("product_id")
+  expectedQuantity Decimal  @default(0) @map("expected_quantity") @db.Decimal(10, 2)
+  actualQuantity   Decimal  @default(0) @map("actual_quantity") @db.Decimal(10, 2)
+  difference       Decimal  @default(0) @db.Decimal(10, 2)
+
+  check   InventoryCheck @relation(fields: [checkId], references: [id], onDelete: Cascade)
+  product Product         @relation(fields: [productId], references: [id])
+
+  @@map("inventory_check_items")
+}
