@@ -1,6 +1,17 @@
 const TOKEN_KEY = 'taawniya_token';
 const USER_KEY = 'taawniya_user';
 
+// Lien dyal l-backend (dyalk f Vercel)
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || 'https://ta3awonia-project.vercel.app').replace(/\/$/, '');
+
+function getFullUrl(url) {
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const cleanUrl = url.startsWith('/') ? url : `/${url}`;
+  return `${API_BASE}${cleanUrl}`;
+}
+
 export function getToken() {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem(TOKEN_KEY);
@@ -13,7 +24,6 @@ export function setToken(token) {
 export function clearToken() {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(TOKEN_KEY);
-    // نحتفظ بـ username باش localStorage ديال البيانات يبقى مربوط بنفس الحساب
   }
 }
 
@@ -48,7 +58,9 @@ async function request(method, url, body) {
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(url, {
+  const targetUrl = getFullUrl(url);
+
+  const res = await fetch(targetUrl, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -78,10 +90,11 @@ export const api = {
 
 // تحميل CSV محمي (يتطلب token في الهيدر)
 export async function downloadCsv(url, filename) {
-  const res = await fetch(url, {
+  const targetUrl = getFullUrl(url);
+  const res = await fetch(targetUrl, {
     headers: { Authorization: `Bearer ${getToken()}` },
   });
-  if (!res.ok) throw new Error('مشكلة فيالتحميل');
+  if (!res.ok) throw new Error('مشكلة في التحميل');
   const blob = await res.blob();
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
